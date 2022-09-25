@@ -161,11 +161,13 @@ class cleanupBase(metaclass=abc.ABCMeta):
         dirname = dirname.strip()
         self.call('mkdir -p "'+dirname+'"')
 
-        if os.isfile(Path(to_path, from_path)):
-            from_inode:int = stat(Path(base, from_path)).st_ino
-            to_inode:int = stat(Path(to_path, from_path)).st_ino
+        f = Path(base, from_path)
+        t = Path(to_path, from_path)
+        if f.exists() and t.exists():
+            from_inode:int = stat(f).st_ino
+            to_inode:int = stat(t).st_ino
             if from_inode == to_inode:
-                print('source and destination are the same inode!')
+                print('source and destination are the same inode!', f, t)
 
         self.call('mv '+base+'"'+from_path+'" '+to_path+'"'+from_path+'"')
 
