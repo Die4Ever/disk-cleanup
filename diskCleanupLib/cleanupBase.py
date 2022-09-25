@@ -5,23 +5,73 @@ import re
 import os
 import stat
 
+class PurgatoryFolder:
+    def __init__(self, path):
+        self.path = path
+
+
 class cleanupBase(metaclass=abc.ABCMeta):
     # defaults
     dryrun = 1
     verbose = 1
-    mindays = 30
-    maxfull = 97
+    startdays = 365 # the age to start cleaning purgatory from
+    mindays = 30 # the youngest that can be cleaned from purgatory
+    maxfull = 97 # how much % space should be used before cleaning purgatory
+    purgatories = []
 
     def __init__(self):
-        print("\nstarting cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string())
-        self.run_cleanup()
-        print("finished cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string() + "\n")
+        self._current_cmd = ''
+        self._last_cmd_called = ''
+        self._last_cmd_outs = ''
+        self._last_cmd_errs = ''
+        self._last_cmd_errcode = 0
+        try:
+            print("\nstarting cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string())
+            self.init()
+            self.run_cleanup()
+            self.cleanup_purgatories()
+            print("finished cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string() + "\n")
+        except Exception as e:
+            print(self.__dict__)
+            raise
+
+    def init(self):
+        pass
 
     @abc.abstractmethod
     def run_cleanup(self):
-        return
+        pass
+
+    def _cleanup_purgatories(self, days):
+        mtime = int(days - 1)
+        if self.verbose:
+            print("deleting "+str(days)+" days old files from", len(self.purgatories), "purgatory folders")
+        num_results = 0
+        for p in self.purgatories:
+            res = self.find_delete(p.path, '-mindepth 1 -type f -mtime +'+str(mtime))
+            num_results += len(res)
+        return num_results
+
+    def cleanup_purgatories(self, days):
+        if self.verbose:
+            print('==== cleanup', len(self.purgatories), 'purgatory folders')
+        if len(self.purgatories) == 0:
+            return
+        
+        purgatory_cleaned_up = 0
+        days = self.startdays
+        while self.needs_cleanup(days):
+            purgatory_cleaned_up += self._cleanup_purgatories(days)
+            #days -= int(max(1, days*0.1 ))
+            days -= 1
+            if self.dryrun and purgatory_cleaned_up>50:
+                break
+
+        for p in self.purgatories:
+            self.delete_empty(p.path, 1)
 
     def _call(self, cmd, safe=False):
+        self._current_cmd = cmd
         if self.verbose:
             print(cmd)
 
@@ -36,6 +86,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
                 print("not running command due to dryrun: "+cmd)
                 return ''
 
+        self._current_cmd = cmd
         #p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, text=True)
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True, universal_newlines=True)
         outs=''
@@ -55,8 +106,13 @@ class cleanupBase(metaclass=abc.ABCMeta):
             print('got errs')
             print(errs)
         ret = p.returncode
+        self._last_cmd_called = cmd
+        self._last_cmd_outs = outs
+        self._last_cmd_errs = errs
+        self._last_cmd_errcode = ret
         if ret != 0:
             raise RuntimeError(cmd+' return code: '+str(ret))
+        self._current_cmd = ''
         return outs
 
 
@@ -103,6 +159,8 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def move_old(self, from_path, to_path, age):
+        if not os.path.isdir(from_path):
+            return
         count = 0
         files = self.call('cd '+from_path+' ; find . -type f -mindepth 1 -mtime +'+str(age-1), True)
         for file in files.split('\n')[::-1]:
@@ -123,6 +181,8 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def delete_empty(self, path, mindepth, maxdepth=100):
+        if not os.path.isdir(path):
+            return None
         return self.call('find '+path+' -mindepth '+str(mindepth)+' -maxdepth '+str(maxdepth)+' -type d -empty -delete')
 
 
@@ -133,6 +193,8 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def find_delete(self, path, arguments):
+        if not os.path.isdir(path):
+            return None
         cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
         out = self.call(cmd)
         if (out and len(out)) or self.verbose:
@@ -140,6 +202,11 @@ class cleanupBase(metaclass=abc.ABCMeta):
             print(out)
         return out
 
+
+    def delete_old_files(self, path, age_days:int, min_depth:int=1):
+        res = self.find_delete(path, '-mindepth '+str(min_depth)+' -mtime +' + str(age_days-1))
+        self.delete_empty(path, 1)
+        return res
 
     def needs_cleanup(self, days):
         used = self.calc_quota()
