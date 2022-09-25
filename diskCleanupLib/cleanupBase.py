@@ -158,7 +158,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
         f = Path(base, from_path).expanduser()
         t = Path(to_path, from_path).expanduser()
         print('move: ', f, ' -> ', t)
-        t.mkdir(parents=True, exist_ok=True)
+        t.parent.mkdir(parents=True, exist_ok=True)
 
         if f.exists() and t.exists():
             if f.samefile(t):
