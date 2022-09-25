@@ -159,6 +159,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
     def move_old(self, from_path, to_path, age):
         if not os.path.isdir(from_path):
+            print('move_old', from_path, 'does not exist')
             return
         count = 0
         files = self.call('cd '+from_path+' ; find . -type f -mindepth 1 -mtime +'+str(age-1), True)
@@ -181,6 +182,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
     def delete_empty(self, path, mindepth, maxdepth=100):
         if not os.path.isdir(path):
+            print('delete_empty', path, 'does not exist')
             return None
         return self.call('find '+path+' -mindepth '+str(mindepth)+' -maxdepth '+str(maxdepth)+' -type d -empty -delete')
 
@@ -193,6 +195,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
     def find_delete(self, path, arguments):
         if not os.path.isdir(path):
+            print('find_delete', path, 'does not exist')
             return None
         cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
         out = self.call(cmd)
