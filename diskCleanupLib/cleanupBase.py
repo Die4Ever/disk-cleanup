@@ -3,7 +3,6 @@ from subprocess import Popen, PIPE, STDOUT
 import traceback
 import re
 import os
-import stat
 from pathlib import Path
 
 
@@ -156,20 +155,21 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
     def move(self, base, from_path, to_path, touch=False):
         # retain folder structure
-        print('move('+base+', '+from_path+', '+to_path+', '+str(touch)+')')
-        dirname = self._call('dirname '+to_path+'"'+from_path+'"')
-        dirname = dirname.strip()
-        self.call('mkdir -p "'+dirname+'"')
+        f = Path(base, from_path).expanduser()
+        t = Path(to_path, from_path).expanduser()
+        print('move: ', f, ' -> ', t)
+        t.mkdir(parents=True, exist_ok=True)
 
-        f = Path(base, from_path)
-        t = Path(to_path, from_path)
         if f.exists() and t.exists():
-            from_inode:int = stat(f).st_ino
-            to_inode:int = stat(t).st_ino
-            if from_inode == to_inode:
+            if f.samefile(t):
                 print('source and destination are the same inode!', f, t)
-
-        self.call('mv '+base+'"'+from_path+'" '+to_path+'"'+from_path+'"')
+                print('deleting source!')
+                if not self.dryrun:
+                    f.unlink()
+                return
+            print('destination exists, overwriting...')
+        if not self.dryrun:
+            f.replace(t)
 
 
     def move_old(self, from_path, to_path, age):
