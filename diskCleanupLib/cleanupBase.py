@@ -6,9 +6,14 @@ import os
 import stat
 from pathlib import Path
 
+
 class PurgatoryFolder:
     def __init__(self, path):
         self.path = path
+
+
+class CmdException(RuntimeError):
+    pass
 
 
 class cleanupBase(metaclass=abc.ABCMeta):
@@ -111,7 +116,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
         self._last_cmd_errs = errs
         self._last_cmd_errcode = ret
         if ret != 0:
-            raise RuntimeError(cmd+' return code: '+str(ret))
+            raise CmdException(cmd+' return code: '+str(ret), cmd, ret, outs, errs)
         self._current_cmd = ''
         return outs
 
@@ -155,6 +160,13 @@ class cleanupBase(metaclass=abc.ABCMeta):
         dirname = self._call('dirname '+to_path+'"'+from_path+'"')
         dirname = dirname.strip()
         self.call('mkdir -p "'+dirname+'"')
+
+        if os.isfile(Path(to_path, from_path)):
+            from_inode:int = stat(Path(base, from_path)).st_ino
+            to_inode:int = stat(Path(to_path, from_path)).st_ino
+            if from_inode == to_inode:
+                print('source and destination are the same inode!')
+
         self.call('mv '+base+'"'+from_path+'" '+to_path+'"'+from_path+'"')
 
 
