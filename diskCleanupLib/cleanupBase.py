@@ -4,6 +4,7 @@ import traceback
 import re
 import os
 import stat
+from pathlib import Path
 
 class PurgatoryFolder:
     def __init__(self, path):
@@ -158,8 +159,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def move_old(self, from_path, to_path, age):
-        if not os.path.isdir(from_path):
-            print('move_old', from_path, 'does not exist')
+        if not self.isdir(from_path, 'move_old'):
             return
         count = 0
         files = self.call('cd '+from_path+' ; find . -type f -mindepth 1 -mtime +'+str(age-1), True)
@@ -181,8 +181,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def delete_empty(self, path, mindepth, maxdepth=100):
-        if not os.path.isdir(path):
-            print('delete_empty', path, 'does not exist')
+        if not self.isdir(path, 'delete_empty'):
             return None
         return self.call('find '+path+' -mindepth '+str(mindepth)+' -maxdepth '+str(maxdepth)+' -type d -empty -delete')
 
@@ -194,8 +193,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
 
     def find_delete(self, path, arguments):
-        if not os.path.isdir(path):
-            print('find_delete', path, 'does not exist')
+        if not self.isdir(path, 'find_delete'):
             return None
         cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
         out = self.call(cmd)
@@ -219,3 +217,11 @@ class cleanupBase(metaclass=abc.ABCMeta):
         if days >= self.mindays and used > self.maxfull:
             return True
         return False
+
+    def isdir(self, path, func=''):
+        path = Path(path)
+        path = path.expanduser()
+        if not path.is_dir():
+            print(func, path, 'does not exist')
+            return False
+        return True
