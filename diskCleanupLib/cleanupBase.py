@@ -53,8 +53,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
         return num_results
 
     def cleanup_purgatories(self):
-        if self.verbose:
-            print('==== cleanup', len(self.purgatories), 'purgatory folders')
+        print('==== cleanup', len(self.purgatories), 'purgatory folders')
         if len(self.purgatories) == 0:
             return
         
