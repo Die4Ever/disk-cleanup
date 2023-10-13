@@ -137,7 +137,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
 
     def calc_quota(self):
         try:
-            output = self.call('quota', True)
+            output = self.call('quota || true', True)
             space, quota = self.get_space(output)
             percent = space / quota * 100
             if self.verbose:
