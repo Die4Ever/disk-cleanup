@@ -39,7 +39,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
         try:
             if args.wetrun:
                 self.dryrun = 0
-            print("\nstarting", ('dryrun' if self.dryrun else 'wetrun') , "cleanup", (self.call('date', True)).strip(), ", quota: ", self.quota_string())
+            print("\nstarting", ('dryrun' if self.dryrun else 'wetrun') , "cleanup", (self.call('date', True)).strip(), ", quota:", self.quota_string())
             self.init()
             self.run_cleanup()
         except Exception as e:
@@ -59,7 +59,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
     def _cleanup_purgatories(self, days):
         mtime = int(days - 1)
         if self.verbose:
-            print("deleting "+str(days)+" days old files from", len(self.purgatories), "purgatory folders")
+            print('deleting', days, 'days old files from', len(self.purgatories), 'purgatory folders')
         num_results = 0
         for p in self.purgatories:
             res = self.find_delete(p.path, '-mindepth 1 -type f -mtime +'+str(mtime))
@@ -83,6 +83,10 @@ class cleanupBase(metaclass=abc.ABCMeta):
             days -= 1
             if self.dryrun and purgatory_cleaned_up>50:
                 break
+        
+        if purgatory_cleaned_up:
+            days += 1
+            print('cleaned up', purgatory_cleaned_up, 'files that were', days, 'days old')
 
         for p in self.purgatories:
             self.delete_empty(p.path, 1)
