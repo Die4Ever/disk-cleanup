@@ -75,7 +75,9 @@ class cleanupBase(metaclass=abc.ABCMeta):
         purgatory_cleaned_up = 0
         days = self.startdays
         if args.max_purgatory_days is not None:
-            purgatory_cleaned_up += self._cleanup_purgatories(int(args.max_purgatory_days))
+            days = int(args.max_purgatory_days)
+            purgatory_cleaned_up += self._cleanup_purgatories(days)
+            days -= 1
         
         while self.needs_cleanup(days):
             purgatory_cleaned_up += self._cleanup_purgatories(days)
