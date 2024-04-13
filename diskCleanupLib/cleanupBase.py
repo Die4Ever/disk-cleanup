@@ -228,7 +228,11 @@ class cleanupBase(metaclass=abc.ABCMeta):
     def find_delete(self, path, arguments):
         if not self.isdir(path, 'find_delete'):
             return None
-        cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
+        # our call function would replace the rm -rf if dryrun, but then we get double output which is annoying for the caller
+        if self.dryrun:
+            cmd = 'find '+path+' '+arguments+' -exec echo "dryrun delete {}" \\;'
+        else:
+            cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
         out = self.call(cmd)
         if (out and len(out)) or self.verbose:
             print(cmd)
