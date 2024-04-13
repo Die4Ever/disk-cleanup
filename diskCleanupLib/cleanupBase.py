@@ -233,7 +233,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
             cmd = 'find '+path+' '+arguments+' -exec echo "dryrun delete {}" \\;'
         else:
             cmd = 'find '+path+' '+arguments+' -exec echo "deleting {}" \\; -exec rm -rf "{}" \\;'
-        out = self.call(cmd)
+        out = self.call(cmd, safe=True)
         if (out and len(out)) or self.verbose:
             print(cmd)
             print(out)
