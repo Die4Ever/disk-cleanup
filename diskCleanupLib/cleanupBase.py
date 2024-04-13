@@ -63,7 +63,7 @@ class cleanupBase(metaclass=abc.ABCMeta):
         num_results = 0
         for p in self.purgatories:
             res = self.find_delete(p.path, '-mindepth 1 -type f -mtime +'+str(mtime))
-            num_results += len(res)
+            num_results += len(res.splitlines())
         return num_results
 
     def cleanup_purgatories(self):
