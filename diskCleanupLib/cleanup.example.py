@@ -2,7 +2,6 @@ import os
 from diskCleanupLib.cleanupBase import cleanupBase, PurgatoryFolder
 
 class Cleanup(cleanupBase):
-    dryrun = 1
     verbose = 1
     startdays = 365 # the age to start cleaning purgatory from
     mindays = 30 # the youngest that can be cleaned from purgatory

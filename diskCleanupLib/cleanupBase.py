@@ -4,7 +4,12 @@ import traceback
 import re
 import os
 from pathlib import Path
+import argparse
 
+parser = argparse.ArgumentParser(description='Disk Cleanup Utility by Die4Ever')
+parser.add_argument('--wetrun', action="store_true", help='The opposite of dryrun, we default to dryrun for safety.')
+parser.add_argument('--max-purgatory-days', help='Delete anything in purgatory folders older than this number of days.')
+args = parser.parse_args()
 
 class PurgatoryFolder:
     def __init__(self, path):
@@ -25,20 +30,24 @@ class cleanupBase(metaclass=abc.ABCMeta):
     purgatories = []
 
     def __init__(self):
+        global args
         self._current_cmd = ''
         self._last_cmd_called = ''
         self._last_cmd_outs = ''
         self._last_cmd_errs = ''
         self._last_cmd_errcode = 0
         try:
-            print("\nstarting cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string())
+            if args.wetrun:
+                self.dryrun = 0
+            print("\nstarting", ('dryrun' if self.dryrun else 'wetrun') , "cleanup", (self.call('date', True)).strip(), ", quota: ", self.quota_string())
             self.init()
             self.run_cleanup()
-            self.cleanup_purgatories()
-            print("finished cleanup " + (self.call('date', True)).strip() + ", quota: " + self.quota_string() + "\n")
         except Exception as e:
             print(self.__dict__)
             raise
+        finally:
+            self.cleanup_purgatories()
+            print("finished", ('dryrun' if self.dryrun else 'wetrun') , "cleanup", (self.call('date', True)).strip(), ", quota:", self.quota_string(), "\n")
 
     def init(self):
         pass
@@ -58,12 +67,16 @@ class cleanupBase(metaclass=abc.ABCMeta):
         return num_results
 
     def cleanup_purgatories(self):
+        global args
         print('==== cleanup', len(self.purgatories), 'purgatory folders')
         if len(self.purgatories) == 0:
             return
         
         purgatory_cleaned_up = 0
         days = self.startdays
+        if args.max_purgatory_days is not None:
+            purgatory_cleaned_up += self._cleanup_purgatories(int(args.max_purgatory_days))
+        
         while self.needs_cleanup(days):
             purgatory_cleaned_up += self._cleanup_purgatories(days)
             #days -= int(max(1, days*0.1 ))
@@ -130,8 +143,8 @@ class cleanupBase(metaclass=abc.ABCMeta):
     def get_space(self, output):
         lines = output.splitlines()
         values = re.split(r'\s+', lines[2])
-        space = values[2]
-        quota = values[3]
+        space = values[2].replace('*','')
+        quota = values[3].replace('*','')
         return int(space), int(quota)
 
 
